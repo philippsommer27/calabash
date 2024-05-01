@@ -1,0 +1,8 @@
+images:
+ - "philippsommer27/ce-t1-0"
+ - "philippsommer27/ce-t1-1"
+
+measurement_engine: scaphandre
+
+procedure:
+  repititions: 10
