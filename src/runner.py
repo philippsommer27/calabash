@@ -9,10 +9,10 @@ def run(config_path):
 
     client = docker.from_env()
     base_image = client.images.pull(config['images'][0])
-    green_image = client.images.pull(config['images'][1])
+    # green_image = client.images.pull(config['images'][1])
 
     client.containers.run(base_image, auto_remove=True)
-    client.containers.run(green_image, auto_remove=True)
+    # client.containers.run(green_image, auto_remove=True)
 
 def setup(mode):
     client = docker.from_env()
@@ -30,8 +30,10 @@ def setup(mode):
     client.volumes.create(name=volume_name)
 
     # Docker configuration for scaphandre
-    volumes = ['/sys/class/powercap:/sys/class/powercap'
-               '/proc:/proc'] 
+    volumes = {
+        '/proc':{'bind':'/proc', 'mode': 'ro'},
+        '/sys/class/powercap':{'bind':'/sys/class/powercap', 'mode':'ro'}
+    }
     ports = {'8080':'8080'}
     
     if (mode == "prometheus"):
@@ -84,7 +86,7 @@ def setup_prometheus(network_name, volume_name):
                           network=network_name,
                           volumes=[f'{volume_name}:/prometheus'])
 
-def cleanup(prom_container, grafana_container, scaphandre_container):
+def cleanup(prom_container, grafana_container, scaphandre_container, network_name):
     prom_container.stop()
     prom_container.remove()
 
