@@ -31,8 +31,8 @@ def setup(mode):
 
     # Docker configuration for scaphandre
     volumes = {
-        '/proc':{'bind':'/proc', 'mode': 'ro'},
-        '/sys/class/powercap':{'bind':'/sys/class/powercap', 'mode':'ro'}
+        '/proc':{'bind':'/proc', 'mode': 'rw'},
+        '/sys/class/powercap':{'bind':'/sys/class/powercap', 'mode':'rw'}
     }
     ports = {'8080':'8080'}
     
@@ -44,7 +44,8 @@ def setup(mode):
                               volumes=volumes, 
                               ports=ports,
                               privileged=True,
-                              network=network_name)
+                              network=network_name,
+                              detached=True)
         
         return (prom_container, grafana_container, scaphandre_container)
 

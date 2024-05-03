@@ -1,4 +1,4 @@
 FROM prom/prometheus 
 
 
-COPY /prometheus.yml /etc/prometheus/prometheus.yml
+COPY /src/docker/prometheus/prometheus.yml /etc/prometheus/prometheus.yml
