@@ -45,9 +45,9 @@ def setup(mode):
                               ports=ports,
                               privileged=True,
                               network=network_name,
-                              detached=True)
+                              detach=True)
         
-        return (prom_container, grafana_container, scaphandre_container)
+        return (prom_container, grafana_container, scaphandre_container, network_name)
 
     else:
         client.containers.run('hubblo/scaphandre', 'json', volumes=volumes)
@@ -55,37 +55,39 @@ def setup(mode):
 def setup_grafana(network_name):
     client = docker.from_env()
     
-    client.images.build(path="./src/docker/grafana/",rm=True)
+    client.images.build(path="./src/docker/grafana/",rm=True, tag='cb_grafana')
     environment = {
         'GF_SECURITY_ADMIN_PASSWORD':'secret',
         'GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH':'/var/lib/grafana/dashboards/default-dashboard.json'
     }
     absp = os.path.abspath('./src/docker/grafana/dashboards/')
-    print(absp)
     volumes = {absp:{
         'bind':'/var/lib/grafana/dashboards/',
         'mode':'ro'
         }}
 
     return client.containers.run(
-        'grafana/grafana', 
+        'cb_grafana', 
         ports={'3000':'3000'}, 
         detach=True, 
         network=network_name,
         environment=environment,
-        volumes=volumes
+        volumes=volumes,
+        name='cb_grafana'
         )
 
 def setup_prometheus(network_name, volume_name):
     client = docker.from_env()
 
-    client.images.build(path="./src/docker/prom/", rm=True)
+    client.images.build(path="./src/docker/prom/", rm=True, tag='cb_prometheus')
 
-    return client.containers.run('prom/prometheus', 
+    return client.containers.run('cb_prometheus', 
                           ports={'9090':'9090'}, 
                           detach=True, 
                           network=network_name,
-                          volumes=[f'{volume_name}:/prometheus'])
+                          volumes=[f'{volume_name}:/prometheus'],
+                          name='cb_prometheus'
+                          )
 
 def cleanup(prom_container, grafana_container, scaphandre_container, network_name):
     prom_container.stop()
