@@ -103,6 +103,6 @@ def cleanup(prom_container, grafana_container, scaphandre_container, network_nam
 if __name__ == "__main__":
     # run("src/test.yaml")
     containers = setup("prometheus")
-    time.sleep(60)
+    time.sleep(120)
     cleanup(*containers)
     
