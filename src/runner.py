@@ -19,9 +19,10 @@ def setup(mode):
 
     # Setup the network
     network_name = "main_network"
-    ipam = docker.types.IPAMPool(subnet='192.168.33.0/24')
+    ipam_pool = docker.types.IPAMPool(subnet='192.168.33.0/24', gateway='192.168.33.1')
+    ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
     client.networks.prune()
-    client.networks.create(network_name, driver="bridge", ipam=ipam)
+    client.networks.create(network_name, driver="bridge", ipam=ipam_config)
 
     client.images.pull('hubblo/scaphandre', platform='linux/amd64')
 
