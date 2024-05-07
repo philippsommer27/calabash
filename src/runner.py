@@ -51,7 +51,8 @@ def setup(mode):
         return (prom_container, grafana_container, scaphandre_container, network_name)
 
     else:
-        client.containers.run('hubblo/scaphandre', 'json', volumes=volumes)
+        client.containers.run('hubblo/scaphandre', 'json -t 60 -s 1 -f ~/home', volumes=volumes)
+        
 
 def setup_grafana(network_name):
     client = docker.from_env()
@@ -103,6 +104,6 @@ def cleanup(prom_container, grafana_container, scaphandre_container, network_nam
 if __name__ == "__main__":
     # run("src/test.yaml")
     containers = setup("prometheus")
-    time.sleep(120)
+    time.sleep(300)
     cleanup(*containers)
     
