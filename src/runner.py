@@ -14,7 +14,7 @@ def run(config_path):
     client.containers.run(base_image, auto_remove=True)
     # client.containers.run(green_image, auto_remove=True)
 
-def setup(mode):
+def setup(mode, data_path=''):
     client = docker.from_env()
 
     # Setup the network
@@ -26,10 +26,6 @@ def setup(mode):
 
     client.images.pull('hubblo/scaphandre', platform='linux/amd64')
 
-    # Set up volume for prometheus data
-    volume_name = "promdata-scaphandre"
-    client.volumes.create(name=volume_name)
-
     # Docker configuration for scaphandre
     volumes = {
         '/proc':{'bind':'/proc', 'mode': 'rw'},
@@ -38,6 +34,9 @@ def setup(mode):
     ports = {'8080':'8080'}
     
     if (mode == "prometheus"):
+            # Set up volume for prometheus data
+        volume_name = "promdata-scaphandre"
+        client.volumes.create(name=volume_name)
         prom_container = setup_prometheus(network_name, volume_name)
         grafana_container = setup_grafana(network_name)
         scaphandre_container = client.containers.run('hubblo/scaphandre', 
@@ -51,8 +50,8 @@ def setup(mode):
         return (prom_container, grafana_container, scaphandre_container, network_name)
 
     else:
-        client.containers.run('hubblo/scaphandre', 'json -t 60 -s 1 -f ~/home', volumes=volumes)
-        
+        volumes[data_path] = {'bind':'/home', 'mode':'rw'}
+        client.containers.run('hubblo/scaphandre', 'json -t 60 -s 1 -f /home', volumes=volumes)
 
 def setup_grafana(network_name):
     client = docker.from_env()
