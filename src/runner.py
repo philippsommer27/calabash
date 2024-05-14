@@ -12,7 +12,7 @@ def run(mode, config_path):
     base_image = client.images.pull(config['images'][0])
     green_image = client.images.pull(config['images'][1])
 
-    containers = setup(mode, config['procedure']['freq'], config['procedure']['out'])
+    containers = setup(mode, config['procedure']['freq'], config['out'])
 
     containers += client.containers.run(base_image, auto_remove=True)
 
