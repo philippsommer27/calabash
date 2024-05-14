@@ -1,8 +1,8 @@
 images:
  - "philippsommer27/ce-t1-0"
  - "philippsommer27/ce-t1-1"
-
-measurement_engine: scaphandre
-
+out: "/home/philipp/dump"
 procedure:
-  repititions: 10
+  repititions: 1000
+  freq: 500000000
+  cooldown: 5

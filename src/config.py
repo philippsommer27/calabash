@@ -3,9 +3,12 @@ from schema import Schema, SchemaError
 
 config_schema = Schema({
     "images": [str],
-    "measurement_engine": str,
-    "procedure":
-        {"repititions": int}
+    "out": str,
+    "procedure":{
+        "repititions": int,
+        "freq": int,
+        "cooldown": int 
+        }
     })
 
 def load_configuration(config_path):

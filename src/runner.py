@@ -4,17 +4,31 @@ import os
 import time
 from config import load_configuration
 
-def run(config_path):
+def run(mode, config_path):
     config = load_configuration(config_path)
 
     client = docker.from_env()
+    
     base_image = client.images.pull(config['images'][0])
-    # green_image = client.images.pull(config['images'][1])
+    green_image = client.images.pull(config['images'][1])
 
-    client.containers.run(base_image, auto_remove=True)
-    # client.containers.run(green_image, auto_remove=True)
+    containers = setup(mode, config['procedure']['freq'], config['procedure']['out'])
 
-def setup(mode, data_path=''):
+    containers += client.containers.run(base_image, auto_remove=True)
+
+    # Cooldown period
+    time.sleep(config['procedure']['cooldown'])
+
+    containers += client.containers.run(green_image, auto_remove=True)
+
+    cleanup(containers)
+
+def run_variation(image_name):
+    client = docker.from_env()
+    image = client.images.pull(image_name)
+    return client.containers.run(image, auto_remove=True)
+
+def setup(mode, freq, data_path=''):
     client = docker.from_env()
 
     # Setup the network
@@ -51,7 +65,7 @@ def setup(mode, data_path=''):
 
     else:
         volumes[data_path] = {'bind':'/home', 'mode':'rw'}
-        client.containers.run('hubblo/scaphandre', 'json -t 60 -s 1 -f /home', volumes=volumes)
+        return client.containers.run('hubblo/scaphandre', f'json -s 0 -n {freq} --containers -f /home', volumes=volumes)
 
 def setup_grafana(network_name):
     client = docker.from_env()
@@ -90,19 +104,14 @@ def setup_prometheus(network_name, volume_name):
                           name='cb_prometheus'
                           )
 
-def cleanup(prom_container, grafana_container, scaphandre_container, network_name):
-    prom_container.stop()
-    prom_container.remove()
-
-    grafana_container.stop()
-    grafana_container.remove()
-
-    scaphandre_container.stop()
-    scaphandre_container.remove()
-
+def cleanup(containers):
+    for container in containers:
+        try: 
+            container.stop()
+            container.remove()
+        except ValueError:
+            print("Error during cleanup...")
+    
 if __name__ == "__main__":
-    # run("src/test.yaml")
-    containers = setup("prometheus")
-    time.sleep(300)
-    cleanup(*containers)
+    run("src/test.yaml")
     
