@@ -65,7 +65,7 @@ def setup(mode, freq, data_path=''):
 
     else:
         volumes[data_path] = {'bind':'/home', 'mode':'rw'}
-        return client.containers.run('hubblo/scaphandre', f'json -s 0 --step-nano {freq} -f /home', volumes=volumes)
+        return client.containers.run('hubblo/scaphandre', f'json -s 0 --step-nano {freq} -f /home/output.json', volumes=volumes)
 
 def setup_grafana(network_name):
     client = docker.from_env()
