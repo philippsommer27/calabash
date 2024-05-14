@@ -113,5 +113,5 @@ def cleanup(containers):
             print("Error during cleanup...")
     
 if __name__ == "__main__":
-    run("src/test.yaml")
+    run("","src/test.yaml")
     
