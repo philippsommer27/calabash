@@ -14,12 +14,12 @@ def run(mode, config_path):
 
     containers = setup(mode, config['procedure']['freq'], config['out'])
 
-    containers += client.containers.run(base_image, auto_remove=True)
+    containers.append(client.containers.run(base_image, auto_remove=True))
 
     # Cooldown period
     time.sleep(config['procedure']['cooldown'])
 
-    containers += client.containers.run(green_image, auto_remove=True)
+    containers.append(client.containers.run(green_image, auto_remove=True))
 
     cleanup(containers)
 
