@@ -12,7 +12,7 @@ def run(mode, config_path):
     
     images = []
     for image in config['images']:
-        images = client.images.pull(image)
+        images.append(client.images.pull(image))
 
     containers = setup(mode, config['procedure']['freq'], config['out'])
 
@@ -23,10 +23,10 @@ def run(mode, config_path):
 
     cleanup(containers)
 
-def run_variation(image_name, out):
-    display_name = image_name[:image_name.find('/')+1]
+def run_variation(image, out):
+    image_name = image.tags[0]
+    display_name = image_name[image_name.find('/')+1:image_name.find(':')]
 
-    image = client.images.pull(image_name)
     client = docker.from_env()
     start_time = time.time()
     container = client.containers.run(image, auto_remove=True, name=display_name)
@@ -98,7 +98,10 @@ def setup(mode, freq, data_path=''):
 
     else:
         volumes[data_path] = {'bind':'/home', 'mode':'rw'}
-        return (client.containers.run('hubblo/scaphandre', f'json -s 0 --step-nano {freq} -f /home/output.json', volumes=volumes, detach=True))
+        return (client.containers.run('hubblo/scaphandre', f'json -s 0 --step-nano {freq} -f /home/output.json', 
+                                      volumes=volumes, 
+                                      detach=True,
+                                      name='scaphandre'))
 
 def setup_grafana(network_name):
     client = docker.from_env()
