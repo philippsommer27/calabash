@@ -2,7 +2,8 @@ import docker
 import docker.types
 import os
 import time
-from config import load_configuration
+import json
+from experiment.config import load_configuration
 
 def run(mode, config_path):
     config = load_configuration(config_path)
@@ -16,17 +17,50 @@ def run(mode, config_path):
     containers = setup(mode, config['procedure']['freq'], config['out'])
 
     for image in images:
-        run_variation(image)
+        run_variation(image, config['out'])
         # Cooldown period
         time.sleep(config['procedure']['cooldown'])
 
     cleanup(containers)
 
-def run_variation(image_name):
-    client = docker.from_env()
-    image = client.images.pull(image_name)
-    return client.containers.run(image, auto_remove=True)
+def run_variation(image_name, out):
+    display_name = image_name[:image_name.find('/')+1]
 
+
+    image = client.images.pull(image_name)
+    client = docker.from_env()
+    start_time = time.time()
+    container = client.containers.run(image, auto_remove=True, name=display_name)
+    end_time = time.time()
+
+    timestamp(out, display_name, start_time, end_time)
+
+    return container
+
+def timestamp(out, event_id, start_time, end_time):
+    duration_seconds = end_time - start_time
+
+    event_entry = {
+        event_id: {
+            "start": start_time,
+            "end": end_time,
+            "duration": duration_seconds
+        }
+    }
+    
+    events = []
+    file_path = out + '/timesheet.json'
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            try:
+                events = json.load(file)
+            except json.JSONDecodeError:
+                events = []
+
+    events.append(event_entry)
+
+    with open(file_path, 'w') as file:
+        json.dump(events, file, indent=4)
 
 def setup(mode, freq, data_path=''):
     client = docker.from_env()
@@ -89,7 +123,7 @@ def setup_grafana(network_name):
         environment=environment,
         volumes=volumes,
         name='cb_grafana'
-        )
+    )
 
 def setup_prometheus(network_name, volume_name):
     client = docker.from_env()
@@ -113,5 +147,5 @@ def cleanup(containers):
             print("Error during cleanup...")
     
 if __name__ == "__main__":
-    run("","src/test.yaml")
+    run("","test.yaml")
     
