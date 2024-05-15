@@ -3,7 +3,7 @@ import docker.types
 import os
 import time
 import json
-from experiment.config import load_configuration
+from config import load_configuration
 
 def run(mode, config_path):
     config = load_configuration(config_path)
@@ -25,7 +25,6 @@ def run(mode, config_path):
 
 def run_variation(image_name, out):
     display_name = image_name[:image_name.find('/')+1]
-
 
     image = client.images.pull(image_name)
     client = docker.from_env()
