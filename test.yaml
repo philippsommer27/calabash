@@ -3,6 +3,6 @@ images:
  - "philippsommer27/ce-t1-1"
 out: "/home/philipp/dump"
 procedure:
-  repititions: 100000
+  repetitions: 100000
   freq: 500000000
   cooldown: 5
