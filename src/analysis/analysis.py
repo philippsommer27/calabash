@@ -1,8 +1,7 @@
 import json
-import os
 import matplotlib.pyplot as plt
 from datetime import datetime
-from jsonfixer import correct_json
+from preprocess import correct_json
 
 file_path = 'out/output.json'
 file_path_fixed = 'out/corrected_output.json'
@@ -33,11 +32,11 @@ def plot_data(timestamps, consumptions):
     plt.savefig('out/host_consumption_plot.png', format='png')
     plt.close()
 
-def main():
+def analyze(path):
     json_data = read_json_data(file_path_fixed)
     timestamps, consumptions = extract_host_consumption(json_data)
     plot_data(timestamps, consumptions)
 
 if __name__ == '__main__':
     correct_json(file_path)
-    main()
+    analyze()
