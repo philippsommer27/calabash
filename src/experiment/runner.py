@@ -30,9 +30,11 @@ class Runner:
         image_name = image.tags[0]
         display_name = image_name[image_name.find('/')+1:image_name.find(':')]
 
+        volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
+
         client = docker.from_env()
         start_time = time.time()
-        container = client.containers.run(image, auto_remove=True, name=display_name)
+        container = client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes)
         end_time = time.time()
 
         self.timestamp(display_name, start_time, end_time)
