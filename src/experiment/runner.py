@@ -35,7 +35,7 @@ class Runner:
         container = client.containers.run(image, auto_remove=True, name=display_name)
         end_time = time.time()
 
-        self.timestamp(self.config['out'], display_name, start_time, end_time)
+        self.timestamp(display_name, start_time, end_time)
 
         return container
 
