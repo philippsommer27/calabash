@@ -27,17 +27,20 @@ class Runner:
         self.cleanup(containers)
 
     def run_variation(self, image):
+        print(f"Running variation {image.tags[0]}")
         image_name = image.tags[0]
         display_name = image_name[image_name.find('/')+1:image_name.find(':')]
 
+        volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
+
         client = docker.from_env()
         start_time = time.time()
-        container = client.containers.run(image, auto_remove=True, name=display_name)
+        client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes)
         end_time = time.time()
 
         self.timestamp(display_name, start_time, end_time)
 
-        return container
+        print(f"Done with {image.tags[0]}")
 
     def timestamp(self, event_id, start_time, end_time):
         duration_seconds = end_time - start_time
