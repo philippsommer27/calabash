@@ -88,6 +88,11 @@ class Runner:
             '/sys/class/powercap':{'bind':'/sys/class/powercap', 'mode':'rw'}
         }
         self.ports = {'8080':'8080'}
+
+        # Clear output directory
+        if os.path.exists(self.config['out']):
+            for file in os.listdir(self.config['out']):
+                os.remove(f"{self.config['out']}/{file}")
         
     def start_prom_graf(self):
         # Set up volume for prometheus data
