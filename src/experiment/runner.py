@@ -4,6 +4,7 @@ import os
 import time
 import json
 from config import load_configuration
+from processes_capture import ProcessesCapture
 
 class Runner:
     def __init__(self, mode, config_path):
@@ -11,13 +12,14 @@ class Runner:
         self.mode = mode
         self.network_name = "main_network"
         self.client = docker.from_env()
+        self.pc = ProcessesCapture()
 
     def run(self):        
         images = []
         for image in self.config['images']:
             images.append(self.client.images.pull(image))
-
-        containers = self.setup()
+        
+        self.setup()
 
         for image in images:
             self.run_variation(image)
@@ -36,7 +38,9 @@ class Runner:
         scaph = self.start_scaphandre(display_name)
 
         start_time = time.time()
+        self.pc.start_tracing(f"{self.config['out']}/{display_name}_pids.txt")
         self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes)
+        self.pc.stop_tracing()
         end_time = time.time()
         self.timestamp(display_name, start_time, end_time, display_name)
 

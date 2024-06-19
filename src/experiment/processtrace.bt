@@ -1,0 +1,6 @@
+#!/usr/bin/bpftrace
+
+// Tracepoint for process creation
+tracepoint:sched:sched_process_fork {
+  printf("C%d: %s (%d) -> %s (%d)\n", nsecs, comm, args->parent_pid, args->child_comm, args->child_pid);
+}
