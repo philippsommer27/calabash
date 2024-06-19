@@ -1,42 +1,79 @@
 import json
-import matplotlib.pyplot as plt
-from datetime import datetime
-from preprocess import correct_json
+import pandas as pd
+import numpy as np
 
-file_path = 'out/output.json'
-file_path_fixed = 'out/corrected_output.json'
+from to_df import ScaphandreToDf
+from preprocess import read_json
 
-def read_json_data(file_path):
-    with open(file_path, 'r') as file:
-        return json.load(file)
+class Analysis:
 
-def extract_host_consumption(json_data):
-    timestamps = []
-    consumptions = []
-    for entry in json_data:
-        host = entry['host']
-        readable_timestamp = datetime.fromtimestamp(host['timestamp'])
-        timestamps.append(readable_timestamp)
-        consumptions.append(host['consumption'])
-    return timestamps, consumptions
+    def __init__(self, dfs, timesheet, config):
+        self.timesheet = timesheet
+        self.config = config
+        self.dfs = dfs
+        self.results = {}
 
-def plot_data(timestamps, consumptions):
-    plt.figure(figsize=(10, 5))
-    plt.plot(timestamps, consumptions, marker='o', linestyle='-')
-    plt.title('Host Consumption Over Time')
-    plt.xlabel('Time')
-    plt.ylabel('Consumption')
-    plt.grid(True)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.savefig('out/host_consumption_plot.png', format='png')
-    plt.close()
+    def write(self, file_path, content):
+        with open(file_path, 'w') as file:
+            file.write(content)
 
-def analyze(path):
-    json_data = read_json_data(file_path_fixed)
-    timestamps, consumptions = extract_host_consumption(json_data)
-    plot_data(timestamps, consumptions)
+    def timestamp_analysis(self):
+        ts_differences = self.dfs['host'].index.to_series().diff().dropna()
+        self.results['timestamp_analysis'] = {
+            "mean": ts_differences.mean(),
+            "std": ts_differences.std(),
+            "min": ts_differences.min(),
+            "max": ts_differences.max(),
+            "median": ts_differences.median(),
+            "running_time": self.dfs['host'].index.to_list()[-1]
+        }
+
+    def host_energy_analysis(self):
+        self.energy_consumption = np.trapz(self.dfs['host']['consumption'], x=self.dfs['host'].index)
+        self.results['host_energy_analysis'] = {
+            "total": self.energy_consumption,
+            "per_repetition": self.energy_consumption / self.config['procedure']['repetitions']
+        }
+
+    def host_power_analysis(self):
+        self.results['host_ower_analysis'] = {
+            "mean": self.dfs['host']['consumption'].mean(),
+            "std": self.dfs['host']['consumption'].std(),
+            "min": self.dfs['host']['consumption'].min(),
+            "max": self.dfs['host']['consumption'].max(),
+            "median": self.dfs['host']['consumption'].median()
+        }
+
+    def process_energy_analysis(self):
+        total_consumption = 0
+        for pid, df in self.dfs.items():
+            if pid != 'host':
+                total_consumption += np.trapz(df['consumption'], x=df.index)
+
+        self.results['process_energy_analysis'] = {
+            "total": total_consumption,
+            "per_repetition": total_consumption / self.config['procedure']['repetitions']
+        }
 
 if __name__ == '__main__':
-    correct_json(file_path)
-    analyze()
+    filepath = 'out/ce-t3-0.json'
+    timesheet_path = 'out/ce-t3-0_t.json'
+    marker = 't3'
+    config = {
+        "procedure": {
+            "repetitions": 10000
+        }
+    }
+
+    json_data = read_json(filepath)
+    timesheet = read_json(timesheet_path)
+
+    converter = ScaphandreToDf(json_data)
+    converter.host_to_df()
+
+    analysis = Analysis(converter.dfs, timesheet, config)
+    analysis.timestamp_analysis()
+    analysis.host_energy_analysis()
+    analysis.host_power_analysis()
+
+    print(json.dumps(analysis.results, indent=2))
