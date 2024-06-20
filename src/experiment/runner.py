@@ -1,3 +1,4 @@
+import threading
 import docker
 import docker.types
 import os
@@ -14,7 +15,7 @@ class Runner:
         self.client = docker.from_env()
         self.pc = ProcessesCapture()
 
-    def run(self):        
+    def run(self):
         images = []
         for image in self.config['images']:
             images.append(self.client.images.pull(image))
@@ -26,28 +27,59 @@ class Runner:
             # Cooldown period
             time.sleep(self.config['procedure']['cooldown'])
 
-
     def run_variation(self, image):
         print(f"Running variation {image.tags[0]}")
 
         image_name = image.tags[0]
         display_name = image_name[image_name.find('/')+1:image_name.find(':')]
+        
+        self.pc.start_tracing(f"{self.config['out']}/{display_name}_pids.txt")
 
         volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
         
         scaph = self.start_scaphandre(display_name)
 
         start_time = time.time()
-        self.pc.start_tracing(f"{self.config['out']}/{display_name}_pids.txt")
-        self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes)
-        self.pc.stop_tracing()
+
+        run_thread = threading.Thread(target=self.run_container, args=(image, display_name, volumes))
+        run_thread.start()
+
+        container_pid = self.get_container_pid_with_retry(display_name)
+        if container_pid:
+            print(f"Container PID: {container_pid}")
+        else:
+            print("Failed to retrieve the container PID")
+
+        run_thread.join()
+
         end_time = time.time()
         self.timestamp(display_name, start_time, end_time, display_name)
 
         scaph.stop()
         scaph.remove()
 
+        self.pc.stop_tracing()
         print(f"Done with {image.tags[0]}")
+
+    def get_container_pid_with_retry(self, display_name, max_retries=5):
+        retry_delay = 0.25 
+        for attempt in range(max_retries):
+            try:
+                container = self.client.containers.get(display_name)
+                inspection = self.client.api.inspect_container(container.id)
+                return inspection['State']['Pid']
+            except docker.errors.NotFound:
+                print(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2
+        return None
+
+    def run_container(self, image, display_name, volumes):
+        self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes)
+
+    def get_container_pid(self, container):
+        inspection = self.client.api.inspect_container(container.id)
+        return inspection['State']['Pid']
 
     def timestamp(self, event_id, start_time, end_time, display_name):
         duration_seconds = end_time - start_time
@@ -80,7 +112,7 @@ class Runner:
         ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
         self.client.networks.create(self.network_name, driver="bridge", ipam=ipam_config)
 
-        self.client.images.pull('hubblo/scaphandre', platform='linux/amd64')
+        self.client.images.pull('philippsommer27/scaphandre', platform='linux/amd64')
 
         # Docker configuration for scaphandre
         self.volumes = {
@@ -100,7 +132,7 @@ class Runner:
         self.client.volumes.create(name=volume_name)
         prom_container = self.setup_prometheus(volume_name)
         grafana_container = self.setup_grafana()
-        scaphandre_container = self.client.containers.run('hubblo/scaphandre', 
+        scaphandre_container = self.client.containers.run('philippsommer27/scaphandre', 
                             'prometheus', 
                             volumes=self.volumes, 
                             ports=self.ports,
@@ -112,7 +144,7 @@ class Runner:
         
     def start_scaphandre(self, display_name):
         self.volumes[self.config['out']] = {'bind':'/home', 'mode':'rw'}
-        return self.client.containers.run('hubblo/scaphandre',
+        return self.client.containers.run('philippsommer27/scaphandre',
                                             f"json -s 0 --step-nano {self.config['procedure']['freq']} -f /home/{display_name}.json", 
                                             volumes=self.volumes, 
                                             detach=True,
