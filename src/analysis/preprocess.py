@@ -3,7 +3,7 @@ import json
 def read(file_path):
     with open(file_path, 'r') as file:
         content = file.read().strip()
-    return content
+    return json.loads(content)
 
 def read_json(filepath):
     with open(filepath, 'r') as file:
@@ -12,16 +12,6 @@ def read_json(filepath):
 def write_json(file_path, content):
     with open(file_path, 'w') as file:
         json.dump(content, file, indent=4)
-
-def correct_format(content):
-    print("correcting format")
-    parts = content.split('}{')
-    corrected_content = '[' + '},{'.join(parts) + ']'
-    return json.loads(corrected_content)
-
-def prune_bad_end(content):
-    print("pruning bad end")
-    return content[0:content.rindex('{"host"')]
 
 def prune_edges(content, timesheet, event_name, buffer=0):
     print("pruning edges")
@@ -47,11 +37,9 @@ def closest_index(content, time):
 
 def preprocess_scaphandre(filepath, timesheet_path, marker):
     content = read(filepath)
-    pruned_content = prune_bad_end(content)
-    corrected_content = correct_format(pruned_content)
 
     timesheet = read_json(timesheet_path)
-    corrected_content = prune_edges(corrected_content, timesheet, marker, 1)
+    corrected_content = prune_edges(content, timesheet, marker, 1)
 
     write_json(filepath, corrected_content)
     return corrected_content

@@ -32,3 +32,8 @@ def resolve(filename, target_pid):
     process_tree = build_process_tree(filename)
     descendants = find_all_descendants(process_tree, target_pid)
     return descendants
+
+if __name__ == '__main__':
+    filename = 'out/ce-t3-0_pids.txt'
+    target_pid = '78096'
+    print(resolve(filename, target_pid))
