@@ -1,5 +1,4 @@
 import json
-import pandas as pd
 import numpy as np
 
 from to_df import ScaphandreToDf
@@ -61,7 +60,7 @@ if __name__ == '__main__':
     marker = 't3'
     config = {
         "procedure": {
-            "repetitions": 10000
+            "repetitions": 10000000
         }
     }
 
