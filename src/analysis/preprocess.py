@@ -20,18 +20,33 @@ def prune_edges(content, timesheet, event_name, buffer=0):
     end = event['end'] + buffer
 
     start_index = closest_index(content, start)
-    end_index = closest_index(content, end)
+    end_index = closest_index(content, end, False)
 
     return content[start_index:end_index]
 
-def closest_index(content, time):
+def closest_index(content, time, ascending=True):
     print("finding closest index")
-    index = 0
-    current = content[index]['host']['timestamp']
 
-    while current < time:
-        index += 1
+    if ascending:
+        if content[0]['host']['timestamp'] > time:
+            print("time is before first entry")
+            return -1
+        index = 0
         current = content[index]['host']['timestamp']
+
+        while current < time:
+            index += 1
+            current = content[index]['host']['timestamp']
+    else:
+        if content[-1]['host']['timestamp'] < time:
+            print("time is after last entry")
+            return -1
+        index = len(content) - 1
+        current = content[index]['host']['timestamp']
+
+        while current > time:
+            index -= 1
+            current = content[index]['host']['timestamp']
 
     return index
 

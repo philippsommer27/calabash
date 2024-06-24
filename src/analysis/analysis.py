@@ -12,9 +12,17 @@ class Analysis:
         self.dfs = dfs
         self.results = {}
 
-    def write(self, file_path, content):
-        with open(file_path, 'w') as file:
-            file.write(content)
+    def write_json(self):
+        with open(f'{config['out']}/analysis.json', 'w') as file:
+            json.dump(self.results, file, indent=4)
+
+    def write_dfs(self):
+        for pid, df in self.dfs.items():
+            df.to_csv(f'{config['out']}/{pid}.csv', index=False)
+
+    def export(self):
+        self.write_json()
+        self.write_dfs()
 
     def timestamp_analysis(self):
         ts_differences = self.dfs['host'].index.to_series().diff().dropna()
