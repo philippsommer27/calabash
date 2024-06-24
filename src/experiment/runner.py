@@ -17,7 +17,7 @@ class Runner:
         self.client = docker.from_env()
         self.pc = ProcessesCapture()
         self.curr_dir_prefix = ""
-        self.multiple_iterations = self.config['procedure']['external_repititions'] > 1
+        self.multiple_iterations = self.config['procedure']['external_repetitions'] > 1
 
     def run(self):
         images = []
@@ -28,7 +28,7 @@ class Runner:
         self.setup()
 
         for image in images:
-            for i in range(self.config['procedure']['external_repititions']):
+            for i in range(self.config['procedure']['external_repetitions']):
                 if self.multiple_iterations:
                     self.curr_dir_prefix = f"/{i}"
                 self.run_variation(image)
@@ -50,8 +50,9 @@ class Runner:
         scaph = self.start_scaphandre(directory)
 
         start_time = time.time()
-
-        run_thread = threading.Thread(target=self.run_container, args=(image, display_name, volumes))
+        
+        env = {"REPETITIONS":self.config['procedure']['internal_repetitions'], "TS_PATH":f'/home/{directory}/timesheet.json'}
+        run_thread = threading.Thread(target=self.run_container, args=(image, display_name, volumes, env))
         run_thread.start()
 
         container_pid = self.get_container_pid_with_retry(display_name)
@@ -97,8 +98,8 @@ class Runner:
                 retry_delay *= 2
         return None
 
-    def run_container(self, image, display_name, volumes):
-        self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes)
+    def run_container(self, image, display_name, volumes, env):
+        self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes, environment=env)
 
     def get_container_pid(self, container):
         inspection = self.client.api.inspect_container(container.id)

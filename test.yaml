@@ -4,6 +4,6 @@ images:
 out: "/home/philipp/dump"
 procedure:
   internal_repetitions: 10000000
-  external_repititions: 1
+  external_repetitions: 3
   freq: 10000000
   cooldown: 1

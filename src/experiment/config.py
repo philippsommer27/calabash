@@ -5,7 +5,7 @@ config_schema = Schema({
     "images": [str],
     "out": str,
     "procedure":{
-        "external_repititions": int,
+        "external_repetitions": int,
         "internal_repetitions": int,
         "freq": int,
         "cooldown": int 
