@@ -3,8 +3,7 @@ images:
  - "philippsommer27/ce-t3-1"
 out: "/home/philipp/dump"
 procedure:
-  external_repetitions: 5
   internal_repetitions: 10000000
+  external_repetitions: 3
   freq: 10000000
   cooldown: 1
-analysis:
