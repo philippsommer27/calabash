@@ -1,19 +1,6 @@
-import json
+from util import read_json, write_json
 
-def read(file_path):
-    with open(file_path, 'r') as file:
-        content = file.read().strip()
-    return json.loads(content)
-
-def read_json(filepath):
-    with open(filepath, 'r') as file:
-        return json.load(file)
-
-def write_json(file_path, content):
-    with open(file_path, 'w') as file:
-        json.dump(content, file, indent=4)
-
-def prune_edges(content, timesheet, event_name, buffer=0):
+def prune_edges(content, timesheet, event_name, buffer):
     print("pruning edges")
     event = next((event for event in timesheet if event['name'] == event_name), None)
     start = event['start'] - buffer
@@ -50,16 +37,11 @@ def closest_index(content, time, ascending=True):
 
     return index
 
-def preprocess_scaphandre(filepath, timesheet_path, marker):
-    content = read(filepath)
+def preprocess_scaphandre(filepath, timesheet_path, prune_mark="block", prune_buffer=0):
+    content = read_json(filepath)
 
     timesheet = read_json(timesheet_path)
-    corrected_content = prune_edges(content, timesheet, marker, 1)
+    corrected_content = prune_edges(content, timesheet, prune_mark, prune_buffer)
 
     write_json(filepath, corrected_content)
     return corrected_content
-
-if __name__ == '__main__':
-    filepath = 'out/ce-t3-0.json'
-    timesheet_path = 'out/ce-t3-0_t.json'
-    preprocess_scaphandre(filepath, timesheet_path, "ce-t3-0/block")

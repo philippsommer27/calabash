@@ -18,7 +18,9 @@ config_schema = Schema(And({
         },
     "analysis": {
         Optional("mode"): And( lambda x: x in ['regex', 'pid']),
-        Optional("pattern"): str
+        Optional("pattern"): str,
+        Optional("prune_mark"): str,
+        Optional("prune_buffer"): str
     }},
     validate_regex
     ))

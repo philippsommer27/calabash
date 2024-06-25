@@ -7,6 +7,7 @@ import json
 import shutil
 from config import load_configuration
 from processes_capture import ProcessesCapture
+from util import get_display_name, create_directory
 
 class Runner:
 
@@ -39,9 +40,9 @@ class Runner:
         print(f"Running variation {image.tags[0]}")
 
         image_name = image.tags[0]
-        display_name = image_name[image_name.find('/')+1:image_name.find(':')] 
+        display_name = get_display_name(image_name)
         directory = display_name + self.curr_dir_prefix
-        self.create_output_directory(directory)
+        create_directory(self.config['out'] + directory)
 
         self.pc.start_tracing(f"{self.config['out']}/{directory}/ptrace.txt")
 
@@ -72,13 +73,6 @@ class Runner:
         self.pc.stop_tracing()
         self.write_pid(directory, container_pid)
         print(f"Done with {image.tags[0]}")
-
-    def create_output_directory(self, path):
-        path = self.config['out'] + f'/{path}'
-        if not os.path.exists(path):
-            print(f"Creating directory {path}")
-            os.makedirs(path)
-        return path
 
     def write_pid(self, directory, pid):
         file_path = self.config['out'] + f'/{directory}/rpid.txt'
