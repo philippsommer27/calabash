@@ -5,9 +5,9 @@ import os
 import time
 import json
 import shutil
-from config import load_configuration
+from misc.config import load_configuration
 from processes_capture import ProcessesCapture
-from util import get_display_name, create_directory
+from misc.util import get_display_name_tagged, create_directory
 
 class Runner:
 
@@ -34,21 +34,24 @@ class Runner:
                     self.curr_dir_prefix = f"/{i}"
                 self.run_variation(image)
                 # Cooldown period
-                time.sleep(self.config['procedure']['cooldown'])    
+                if 'cooldown' in self.config['procedure']:
+                    time.sleep(self.config['procedure']['cooldown'])    
 
     def run_variation(self, image):
         print(f"Running variation {image.tags[0]}")
 
         image_name = image.tags[0]
-        display_name = get_display_name(image_name)
+        display_name = get_display_name_tagged(image_name)
         directory = display_name + self.curr_dir_prefix
-        create_directory(self.config['out'] + directory)
+        create_directory(self.config['out'] + "/" + directory)
 
         self.pc.start_tracing(f"{self.config['out']}/{directory}/ptrace.txt")
 
         volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
         
         scaph = self.start_scaphandre(directory)
+        if 'warmup' in self.config['procedure']:
+            time.sleep(self.config['procedure']['warmup'])
 
         start_time = time.time()
         

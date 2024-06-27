@@ -26,9 +26,9 @@ class ScaphandreToDf:
                         results[pid] = []
                     results[pid].append({
                         "timestamp": consumer['timestamp'] - self.fst_ts,
-                        "consumption": consumer['consumption'] / 1000000
+                        "consumption": consumer['consumption'] / 1000000 # may be wrong due to https://github.com/hubblo-org/scaphandre/issues/378 
                     })
-
+                    
         for pid in results:
             results[pid] = sorted(results[pid], key=lambda x: x['timestamp'])
             self.dfs[pid] = pd.DataFrame(results[pid]).set_index('timestamp')

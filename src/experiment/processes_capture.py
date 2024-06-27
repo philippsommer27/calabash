@@ -42,8 +42,3 @@ class ProcessesCapture:
         with open(self.bpftrace_script) as file:
             return file.read()
         
-if __name__ == '__main__':
-    bpftrace_runner = ProcessesCapture()
-    bpftrace_runner.start_tracing()
-    time.sleep(10)
-    bpftrace_runner.stop_tracing()

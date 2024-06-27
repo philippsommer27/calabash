@@ -1,12 +1,10 @@
-import json
 import numpy as np
 
 class Analysis:
 
-    def __init__(self, dfs, output_dir, repetitions):
+    def __init__(self, dfs, repetitions):
         self.dfs = dfs
         self.results = {}
-        self.output_dir = output_dir
         self.repetitions = repetitions
 
     def timestamp_analysis(self):
@@ -28,7 +26,7 @@ class Analysis:
         }
 
     def host_power_analysis(self):
-        self.results['host_ower_analysis'] = {
+        self.results['host_power_analysis'] = {
             "mean": self.dfs['host']['consumption'].mean(),
             "std": self.dfs['host']['consumption'].std(),
             "min": self.dfs['host']['consumption'].min(),

@@ -6,7 +6,8 @@ procedure:
   internal_repetitions: 10000000
   external_repetitions: 3
   freq: 10000000
-  cooldown: 1
+  cooldown: 3
+  warmup: 1
 analysis:
   mode: pid
   prune_mark: "block"

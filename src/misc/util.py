@@ -1,8 +1,12 @@
 import json
 import os
+import shutil
 
 def get_display_name(image_name):
-    return image_name[image_name.find('/')+1:image_name.find(':')] 
+    return image_name[image_name.find('/')+1:]
+
+def get_display_name_tagged(image_name):
+    return image_name[image_name.find('/')+1:image_name.find(':')]  
 
 def read_json(filepath):
     with open(filepath, 'r') as file:

@@ -31,4 +31,5 @@ def find_all_descendants(process_tree, pid):
 def resolve(filename, target_pid):
     process_tree = build_process_tree(filename)
     descendants = find_all_descendants(process_tree, target_pid)
+    descendants = list(map(int, descendants))
     return descendants
