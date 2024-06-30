@@ -1,6 +1,8 @@
 images:
- - "philippsommer27/ce-t3-0"
- - "philippsommer27/ce-t3-1"
+  - "philippsommer27/ce-t3-0"
+  - "philippsommer27/ce-t3-1"
+  - "philippsommer27/ce-t3-2"
+  - "philippsommer27/ce-t3-3"
 out: "/home/philipp/dump"
 procedure:
   internal_repetitions: 10000000
