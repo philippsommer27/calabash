@@ -5,6 +5,7 @@ import os
 import time
 import json
 import shutil
+import logging
 from misc.config import load_configuration
 from processes_capture import ProcessesCapture
 from misc.util import get_display_name_tagged, create_directory
@@ -23,7 +24,7 @@ class Runner:
     def run(self):
         images = []
         for image in self.config['images']:
-            print(f"Pulling image {image}")
+            logging.info("Pulling image %s", image)
             images.append(self.client.images.pull(image))
         
         self.setup()
@@ -38,7 +39,7 @@ class Runner:
                     time.sleep(self.config['procedure']['cooldown'])    
 
     def run_variation(self, image):
-        print(f"Running variation {image.tags[0]}")
+        logging.info("Running variation %s", image.tags[0])
 
         image_name = image.tags[0]
         display_name = get_display_name_tagged(image_name)
@@ -61,9 +62,9 @@ class Runner:
 
         container_pid = self.get_container_pid_with_retry(display_name)
         if container_pid:
-            print(f"Container PID: {container_pid}")
+            logging.info("Container PID: %d", container_pid)
         else:
-            print("Failed to retrieve the container PID")
+            logging.error("Failed to retrieve the container PID")
 
         run_thread.join()
 
@@ -75,7 +76,7 @@ class Runner:
 
         self.pc.stop_tracing()
         self.write_pid(directory, container_pid)
-        print(f"Done with {image.tags[0]}")
+        logging.info("Done with %s", image.tags[0])
 
     def write_pid(self, directory, pid):
         file_path = self.config['out'] + f'/{directory}/rpid.txt'
@@ -90,7 +91,7 @@ class Runner:
                 inspection = self.client.api.inspect_container(container.id)
                 return inspection['State']['Pid']
             except docker.errors.NotFound:
-                print(f"Attempt {attempt + 1} failed, retrying in {retry_delay} seconds...")
+                logging.warning("Attempt %d failed, retrying in %f seconds...", attempt + 1, retry_delay)
                 time.sleep(retry_delay)
                 retry_delay *= 2
         return None
@@ -171,7 +172,8 @@ class Runner:
         self.volumes[self.config['out']] = {'bind':'/home', 'mode':'rw'}
         return self.client.containers.run('philippsommer27/scaphandre',
                                             f"json -s 0 --step-nano {self.config['procedure']['freq']} -f /home/{directory}/power.json", 
-                                            volumes=self.volumes, 
+                                            volumes=self.volumes,
+                                            privileged=True,
                                             detach=True,
                                             name='scaphandre')
 
@@ -214,11 +216,12 @@ class Runner:
                 container.stop()
                 container.remove()
             except ValueError:
-                print("Error during cleanup...")
+                logging.error("Error during cleanup...")
 
         self.client.networks.prune()
     
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
     runner = Runner("","test.yaml")
     runner.run()
     

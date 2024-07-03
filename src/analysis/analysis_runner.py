@@ -5,7 +5,9 @@ from process_ptrace import resolve
 from to_df import ScaphandreToDf
 from misc.config import load_configuration
 from misc.util import read_json, get_display_name, read_file, create_directory, write_json
+from preflight import check
 import pandas as pd
+import logging
 
 def run(config_path):
     config = load_configuration(config_path)
@@ -15,11 +17,11 @@ def run(config_path):
     
     for image in config['images']:
         display_name = get_display_name(image)
-        print(f"Running analysis for {display_name}")
+        logging.info(f"Running analysis for %s", display_name)
         accumulated = {}
         host_dfs = []
         for i in range(config['procedure']['external_repetitions']):
-            print(f"Repetition {i}")
+            logging.info("Repetition %d", i)
             # Setup
 
             if config['procedure']['external_repetitions'] > 1:
@@ -28,6 +30,11 @@ def run(config_path):
                 curr_dir_prefix = ""
             directory = config['out'] + "/" + display_name + curr_dir_prefix
             
+            # Preflight
+            if check(directory) == False:
+                logging.error("Preflight check failed for %s", directory)
+                exit()
+
             # Preprocess
 
             kwargs = {}
@@ -126,4 +133,5 @@ def visualize_variations(dfs, host_power_dfs, output_path):
         power_plot(set, f"{output_path}/host_power_{i}.png")
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
     run("test.yaml")

@@ -1,7 +1,7 @@
 import subprocess
 import threading
 import os
-import time
+import logging
 
 class ProcessesCapture:
 
@@ -26,7 +26,8 @@ class ProcessesCapture:
             self.running = True
             self.thread = threading.Thread(target=self._run_bpftrace, args=(output_file,))
             self.thread.start()
-            print("Tracing started.")
+            logging.info("Tracing started.")
+            
 
     def stop_tracing(self):
         if self.running:
@@ -36,7 +37,7 @@ class ProcessesCapture:
                 self.process.wait()
             if self.thread:
                 self.thread.join()
-            print("Tracing stopped.")
+            logging.info("Tracing stopped.")
 
     def load_script(self):
         with open(self.bpftrace_script) as file:
