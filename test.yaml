@@ -1,10 +1,9 @@
 images:
-  - "philippsommer27/ce-p1-0"
-  - "philippsommer27/ce-p1-1"
-  - "philippsommer27/ce-p1-2"
-out: "/home/philipp/dump"
+  - "philippsommer27/ce-p2-j-0"
+  - "philippsommer27/ce-p2-j-1"
+out: "/home/philipp/dump/dump2"
 procedure:
-  internal_repetitions: 1000
+  internal_repetitions: 1000000
   external_repetitions: 3
   freq: 10000000
   cooldown: 3

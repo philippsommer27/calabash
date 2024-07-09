@@ -9,7 +9,7 @@ def check(directory):
 
     return check_power(power) and check_ptrace(ptrace) and check_rpid(rpid) and check_timesheet(timesheet)
 
-def check_timesheet(timesheet, freq=50):
+def check_timesheet(timesheet, freq=0.05):
     for element in timesheet:
         if element.get('name') == 'block':
             if element['duration'] < 2 * freq:
