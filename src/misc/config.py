@@ -15,7 +15,7 @@ config_schema = Schema(And({
         "internal_repetitions": int,
         "freq": int,
         Optional("cooldown"): int,
-        Optional("warmup"): int 
+        Optional("scaph_warmup"): int 
         },
     "analysis": {
         Optional("mode"): And( lambda x: x in ['regex', 'pid']),

@@ -51,8 +51,8 @@ class Runner:
         volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
         
         scaph = self.start_scaphandre(directory)
-        if 'warmup' in self.config['procedure']:
-            time.sleep(self.config['procedure']['warmup'])
+        if 'scaph_warmup' in self.config['procedure']:
+            time.sleep(self.config['procedure']['scaph_warmup'])
 
         start_time = time.time()
         
