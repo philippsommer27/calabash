@@ -19,7 +19,6 @@ class Runner:
         self.client = docker.from_env()
         self.pc = ProcessesCapture()
         self.curr_dir_prefix = ""
-        self.multiple_iterations = self.config['procedure']['external_repetitions'] > 1
 
     def run(self):
         images = []
@@ -29,14 +28,18 @@ class Runner:
         
         self.setup()
 
-        for image in images:
-            for i in range(self.config['procedure']['external_repetitions']):
-                if self.multiple_iterations:
-                    self.curr_dir_prefix = f"/{i}"
+        if 'experiment_warmup' in self.config['procedure']:
+            self.warmup()
+
+        for i in range(self.config['procedure']['external_repetitions']):
+            for image in images:
+                self.curr_dir_prefix = f"/{i}"
                 self.run_variation(image)
                 # Cooldown period
                 if 'cooldown' in self.config['procedure']:
-                    time.sleep(self.config['procedure']['cooldown'])    
+                    time.sleep(self.config['procedure']['cooldown'])
+
+
 
     def run_variation(self, image):
         logging.info("Running variation %s", image.tags[0])
@@ -152,22 +155,6 @@ class Runner:
                 elif os.path.isdir(item_path):
                     shutil.rmtree(item_path)
         
-    def start_prom_graf(self):
-        # Set up volume for prometheus data
-        volume_name = "promdata-scaphandre"
-        self.client.volumes.create(name=volume_name)
-        prom_container = self.setup_prometheus(volume_name)
-        grafana_container = self.setup_grafana()
-        scaphandre_container = self.client.containers.run('philippsommer27/scaphandre', 
-                            'prometheus', 
-                            volumes=self.volumes, 
-                            ports=self.ports,
-                            privileged=True,
-                            network=self.network_name,
-                            detach=True)
-        
-        return (prom_container, grafana_container, scaphandre_container)
-        
     def start_scaphandre(self, directory):
         self.volumes[self.config['out']] = {'bind':'/home', 'mode':'rw'}
         return self.client.containers.run('philippsommer27/scaphandre',
@@ -176,49 +163,15 @@ class Runner:
                                             privileged=True,
                                             detach=True,
                                             name='scaphandre')
+    
+    def warmup(self): 
+        warmup_time = self.config['procedure']['warmup']
+        start_time = time.time()
+        end_time = start_time + warmup_time
+        logging.info(f"Warming up for {warmup_time} seconds...")
 
-    def setup_grafana(self):        
-        self.client.images.build(path="./src/docker/grafana/",rm=True, tag='cb_grafana')
-        environment = {
-            'GF_SECURITY_ADMIN_PASSWORD':'secret',
-            'GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH':'/var/lib/grafana/dashboards/default-dashboard.json'
-        }
-        absp = os.path.abspath('./src/docker/grafana/dashboards/')
-        volumes = {absp:{
-            'bind':'/var/lib/grafana/dashboards/',
-            'mode':'ro'
-            }}
-
-        return self.client.containers.run(
-            'cb_grafana', 
-            ports={'3000':'3000'}, 
-            detach=True, 
-            network=self.network_name,
-            environment=environment,
-            volumes=volumes,
-            name='cb_grafana'
-        )
-
-    def setup_prometheus(self, volume_name):
-        self.client.images.build(path="./src/docker/prom/", rm=True, tag='cb_prometheus')
-
-        return self.client.containers.run('cb_prometheus', 
-                            ports={'9090':'9090'}, 
-                            detach=True, 
-                            network=self.network_name,
-                            volumes=[f'{volume_name}:/prometheus'],
-                            name='cb_prometheus'
-                            )
-
-    def cleanup(self, containers):
-        for container in containers:
-            try: 
-                container.stop()
-                container.remove()
-            except ValueError:
-                logging.error("Error during cleanup...")
-
-        self.client.networks.prune()
+        while time.time() < end_time:
+            _ = [x**2 for x in range(1000)]
     
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')

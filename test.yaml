@@ -1,13 +1,13 @@
 images:
-  - "philippsommer27/ce-p2-j-0"
-  - "philippsommer27/ce-p2-j-1"
-out: "/home/philipp/dump/dump2"
+  - "philippsommer27/ce-p4-1-0"
+  - "philippsommer27/ce-p4-1-1"
+out: "/home/philipp/dump"
 procedure:
-  internal_repetitions: 1000000
-  external_repetitions: 3
-  freq: 10000000
+  internal_repetitions: 500000000
+  external_repetitions: 2
+  freq: 1000000
   cooldown: 3
-  warmup: 1
+  scaph_warmup: 1
 analysis:
   mode: pid
   prune_mark: "block"
