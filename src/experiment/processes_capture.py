@@ -28,7 +28,6 @@ class ProcessesCapture:
             self.thread.start()
             logging.info("Tracing started.")
             
-
     def stop_tracing(self):
         if self.running:
             self.running = False

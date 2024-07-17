@@ -1,3 +1,4 @@
+import sys
 import threading
 import docker
 import docker.types
@@ -15,71 +16,108 @@ class Runner:
     def __init__(self, mode, config_path):
         self.config = load_configuration(config_path)
         self.mode = mode
-        self.network_name = "main_network"
         self.client = docker.from_env()
         self.pc = ProcessesCapture()
         self.curr_dir_prefix = ""
+        self.active_containers = set()
 
     def run(self):
-        images = []
-        for image in self.config['images']:
-            logging.info("Pulling image %s", image)
-            images.append(self.client.images.pull(image))
+        try:
+            images = []
+            for image in self.config['images']:
+                logging.info("Pulling image %s", image)
+                images.append(self.client.images.pull(image))
+            
+            self.setup()
+
+            if 'experiment_warmup' in self.config['procedure']:
+                self.warmup()
+
+            for i in range(self.config['procedure']['external_repetitions']):
+                for image in images:
+                    self.curr_dir_prefix = f"/{i}"
+                    self.run_variation(image)
+                    # Cooldown period
+                    if 'cooldown' in self.config['procedure']:
+                        time.sleep(self.config['procedure']['cooldown'])
         
-        self.setup()
-
-        if 'experiment_warmup' in self.config['procedure']:
-            self.warmup()
-
-        for i in range(self.config['procedure']['external_repetitions']):
-            for image in images:
-                self.curr_dir_prefix = f"/{i}"
-                self.run_variation(image)
-                # Cooldown period
-                if 'cooldown' in self.config['procedure']:
-                    time.sleep(self.config['procedure']['cooldown'])
-
-
+        except docker.errors.ImageNotFound as e:
+            logging.error(f"Docker image not found: {e}")
+        except docker.errors.APIError as e:
+            logging.error(f"Docker API error: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error in run method: {e}")
+        finally:
+            self.cleanup_all_containers()
 
     def run_variation(self, image):
-        logging.info("Running variation %s", image.tags[0])
+        scaph = None
+        try: 
+            logging.info("Running variation %s", image.tags[0])
 
-        image_name = image.tags[0]
-        display_name = get_display_name_tagged(image_name)
-        directory = display_name + self.curr_dir_prefix
-        create_directory(self.config['out'] + "/" + directory)
+            image_name = image.tags[0]
+            display_name = get_display_name_tagged(image_name)
+            directory = display_name + self.curr_dir_prefix
+            create_directory(self.config['out'] + "/" + directory)
 
-        self.pc.start_tracing(f"{self.config['out']}/{directory}/ptrace.txt")
+            self.pc.start_tracing(f"{self.config['out']}/{directory}/ptrace.txt")
 
-        volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
-        
-        scaph = self.start_scaphandre(directory)
-        if 'scaph_warmup' in self.config['procedure']:
-            time.sleep(self.config['procedure']['scaph_warmup'])
+            volumes = {self.config['out']:{'bind':'/home', 'mode':'rw'}}
+            
+            scaph = self.start_scaphandre(directory)
+            self.active_containers.add(scaph)
+            if 'scaph_warmup' in self.config['procedure']:
+                time.sleep(self.config['procedure']['scaph_warmup'])
 
-        start_time = time.time()
-        
-        env = {"REPETITIONS":self.config['procedure']['internal_repetitions'], "TS_PATH":f'/home/{directory}/timesheet.json'}
-        run_thread = threading.Thread(target=self.run_container, args=(image, display_name, volumes, env))
-        run_thread.start()
+            start_time = time.time()
+            
+            env = {"REPETITIONS":self.config['procedure']['internal_repetitions'], "TS_PATH":f'/home/{directory}/timesheet.json'}
+            
+            try:
+                run_thread = threading.Thread(target=self.run_container, args=(image, display_name, volumes, env))
+                run_thread.start()
 
-        container_pid = self.get_container_pid_with_retry(display_name)
-        if container_pid:
-            logging.info("Container PID: %d", container_pid)
-        else:
-            logging.error("Failed to retrieve the container PID")
+                container_pid = self.get_container_pid_with_retry(display_name)
+                if container_pid:
+                    logging.info("Container PID: %d", container_pid)
+                else:
+                    logging.error("Failed to retrieve the container PID")
 
-        run_thread.join()
+                run_thread.join()
 
-        end_time = time.time()
-        self.timestamp(display_name, start_time, end_time, directory)
+            except Exception as e:
+                logging.error(f"Error in container thread for {display_name}: {e}")
 
-        scaph.stop()
-        scaph.remove()
+            end_time = time.time()
+            self.timestamp(display_name, start_time, end_time, directory)
 
-        self.pc.stop_tracing()
-        self.write_pid(directory, container_pid)
-        logging.info("Done with %s", image.tags[0])
+            self.cleanup_container(scaph)
+
+            self.pc.stop_tracing()
+            self.write_pid(directory, container_pid)
+            logging.info("Done with %s", image.tags[0])
+
+        except Exception as e:
+            logging.error(f"Error when running variation {image.tags[0]}: {e}")
+            self.pc.stop_tracing()
+            if scaph:
+                self.cleanup_container(scaph)
+
+    def run_container(self, image, display_name, volumes, env):
+        container = None
+        try: 
+            container = self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes, environment=env, detach=True)
+            self.active_containers.add(container)
+            container.wait()
+        except docker.errors.APIError as e:
+            logging.error(f"Docker API error when running container {display_name}: {e}")
+            raise
+        except Exception as e:
+            logging.error(f"Unexpected error when running container {display_name}: {e}")
+            raise
+        finally:
+            if container:
+                self.cleanup_container(container)
 
     def write_pid(self, directory, pid):
         file_path = self.config['out'] + f'/{directory}/rpid.txt'
@@ -98,9 +136,6 @@ class Runner:
                 time.sleep(retry_delay)
                 retry_delay *= 2
         return None
-
-    def run_container(self, image, display_name, volumes, env):
-        self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes, environment=env)
 
     def get_container_pid(self, container):
         inspection = self.client.api.inspect_container(container.id)
@@ -131,12 +166,6 @@ class Runner:
             json.dump(events, file, indent=4)
 
     def setup(self):
-        # Setup the network
-        self.client.networks.prune()
-        ipam_pool = docker.types.IPAMPool(subnet='192.168.33.0/24', gateway='192.168.33.1')
-        ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
-        self.client.networks.create(self.network_name, driver="bridge", ipam=ipam_config)
-
         self.client.images.pull('philippsommer27/scaphandre', platform='linux/amd64')
 
         # Docker configuration for scaphandre
@@ -172,7 +201,27 @@ class Runner:
 
         while time.time() < end_time:
             _ = [x**2 for x in range(1000)]
+
+    def cleanup_container(self, container):
+        try:
+            container.stop()
+            container.remove()
+            self.active_containers.remove(container)
+        except docker.errors.NotFound:
+            pass
+        except Exception as e:
+            logging.error(f"Error cleaning up container {container.name}: {e}")
     
+    def cleanup_all_containers(self):
+        for container in list(self.active_containers):
+            self.cleanup_container(container)
+    
+def signal_handler(*_):
+    logging.info("Received termination signal. Cleaning up...")
+    runner.cleanup_all_containers()
+    runner.pc.stop_tracing()
+    sys.exit(0)
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
     runner = Runner("","test.yaml")

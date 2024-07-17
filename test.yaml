@@ -4,7 +4,7 @@ images:
 out: "/home/philipp/dump"
 procedure:
   internal_repetitions: 500000000
-  external_repetitions: 2
+  external_repetitions: 1
   freq: 1000000
   cooldown: 3
   scaph_warmup: 1
