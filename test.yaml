@@ -8,6 +8,7 @@ procedure:
   freq: 1000000
   cooldown: 3
   scaph_warmup: 1
+  experiment_warmup: 30
 analysis:
   mode: pid
   prune_mark: "block"

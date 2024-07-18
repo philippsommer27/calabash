@@ -193,7 +193,7 @@ class Runner:
                                             name='scaphandre')
     
     def warmup(self) -> None: 
-        warmup_time: int = self.config['procedure']['warmup']
+        warmup_time: int = self.config['procedure']['experiment_warmup']
         start_time: float = time.time()
         end_time: float = start_time + warmup_time
         logging.info(f"Warming up for {warmup_time} seconds...")
