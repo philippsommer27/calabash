@@ -13,9 +13,8 @@ from misc.util import get_display_name_tagged, create_directory
 
 class Runner:
 
-    def __init__(self, mode, config_path):
+    def __init__(self, config_path):
         self.config = load_configuration(config_path)
-        self.mode = mode
         self.client = docker.from_env()
         self.pc = ProcessesCapture()
         self.curr_dir_prefix = ""
@@ -222,8 +221,14 @@ def signal_handler(*_):
     runner.pc.stop_tracing()
     sys.exit(0)
 
-if __name__ == "__main__":
+def main(config_path):
+    global runner
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
-    runner = Runner("","test.yaml")
+    runner = Runner(config_path)
     runner.run()
-    
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: runner.py <config_path>")
+        sys.exit(1)
+    main(sys.argv[1])
