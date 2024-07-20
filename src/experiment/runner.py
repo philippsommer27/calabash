@@ -168,8 +168,7 @@ class Runner:
             '/proc': {'bind': '/proc', 'mode': 'rw'},
             '/sys/class/powercap': {'bind': '/sys/class/powercap', 'mode': 'rw'}
         }
-        self.ports: Dict[str, str] = {'8080': '8080'}
-
+        
         # Clear output directory
         if os.path.exists(self.config['out']):
             for item in os.listdir(self.config['out']):
