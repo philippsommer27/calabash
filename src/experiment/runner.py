@@ -136,10 +136,6 @@ class Runner:
                 retry_delay *= 2
         return None
 
-    def get_container_pid(self, container: docker.models.containers.Container) -> int:
-        inspection: Dict = self.client.api.inspect_container(container.id)
-        return inspection['State']['Pid']
-
     def timestamp(self, event_id: str, start_time: float, end_time: float, directory: str) -> None:
         duration_seconds: float = end_time - start_time
 
