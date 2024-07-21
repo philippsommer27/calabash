@@ -7,3 +7,4 @@ numpy >= 1.26.4
 bcc >=  0.1.10 
 seaborn >= 0.13.2 
 psutil >= 6.0.0 
+py-cpuinfo >= 9.0.0 
