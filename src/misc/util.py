@@ -16,8 +16,8 @@ def read_file(file_path):
         content = file.read().strip()
     return content
 
-def write_json(file_path, content):
-    with open(file_path, 'w') as file:
+def write_json(file_path, content, mode='w'):
+    with open(file_path, mode) as file:
         json.dump(content, file, indent=4)
 
 def create_directory(path):

@@ -10,7 +10,8 @@ import logging
 from typing import Dict, List, Optional, Set
 from misc.config import load_configuration
 from processes_capture import ProcessesCapture
-from misc.util import get_display_name_tagged, create_directory
+from misc.util import get_display_name_tagged, create_directory, write_json
+from metadata import get_metadata
 
 class Runner:
     def __init__(self, config_path: str) -> None:
@@ -177,6 +178,9 @@ class Runner:
                     os.remove(item_path)
                 elif os.path.isdir(item_path):
                     shutil.rmtree(item_path)
+
+        metadata: Dict = get_metadata()
+        write_json(self.config['out'] + '/metadata.json', metadata, 'x')
         
     def start_scaphandre(self, directory: str) -> docker.models.containers.Container:
         self.volumes[self.config['out']] = {'bind': '/home', 'mode': 'rw'}

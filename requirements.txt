@@ -6,3 +6,4 @@ pandas >= 2.2.2
 numpy >= 1.26.4
 bcc >=  0.1.10 
 seaborn >= 0.13.2 
+psutil >= 6.0.0 
