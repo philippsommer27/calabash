@@ -6,6 +6,8 @@ from to_df import ScaphandreToDf
 from misc.config import load_configuration
 from misc.util import read_json, get_display_name, read_file, create_directory, write_json
 from preflight import check
+from scipy.stats import shapiro, ttest_rel
+from numpy import sqrt
 import pandas as pd
 import logging
 from typing import List, Dict, Any
@@ -48,16 +50,26 @@ def run(config_path: str) -> None:
 
         if config['procedure']['external_repetitions'] > 1:
             df = analyze_multiple_runs(accumulated)
+            df.to_csv(f"{config['out']}/{display_name}/accumulated.csv")
             dfs.append(df)
             summary = df.describe()
             summary.to_csv(f"{config['out']}/{display_name}/summary.csv")
             summaries.append(summary)
 
+            # Statistical Analysis
+            shapiro_analysis = {}
+            stat, p = shapiro(df['host_energy_total'])
+            shapiro_analysis['host_analysis_shapiro'] = {'stat': stat, 'p': p}
+            stat, p = shapiro(df['process_energy_total'])
+            shapiro_analysis['process_analysis_shapiro'] = {'stat': stat, 'p': p}
+
+            write_json(f"{config['out']}/{display_name}/shapiro_analysis.json", shapiro_analysis)
+
         host_power_dfs.append(host_dfs)
 
     if len(host_power_dfs) > 1:
         visualize_variations(dfs, host_power_dfs, config['out'])
-        compare_variations(summaries, config['out'])
+        compare_variations(summaries, dfs, config['out'])
 
 def setup_directory(out_path: str, display_name: str, iteration: int) -> str:
     curr_dir_prefix = f"/{iteration}"
@@ -104,21 +116,40 @@ def update_result_for_first_entry(result: Dict[str, Dict[int, Any]], summary: pd
     for key in SUMMARY_KEYS:
         result[key][index] = summary.loc['mean', key]
 
-def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]], summary: pd.DataFrame, index: int) -> None:
+def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]], summaries: List[pd.DataFrame], index: int, dfs: List[pd.DataFrame]) -> None:
     for key in SUMMARY_KEYS:
-        new_value = summary.loc['mean', key]
-        base_value = result[key][0]
-        percentage_change = calculate_percentage_change(new_value, base_value)
-        result[key][index] = [new_value, percentage_change]
+        new_value = summaries[index].loc['mean', key]
+        base_value = summaries[0].loc['mean', key]
 
-def compare_variations(summaries: List[pd.DataFrame], output_path: str) -> None:
+        # Calculate difference and percentage change
+        difference = new_value - base_value
+        percentage_change = calculate_percentage_change(new_value, base_value)
+
+        # Paired t-test
+        stat, p = ttest_rel(dfs[0][key], dfs[index][key])
+
+        # Cohen's d
+        n = summaries[0].loc['count', key]
+        s1, s2 = summaries[0].loc['std', key], summaries[index].loc['std', key]
+        m1, m2 = summaries[0].loc['mean', key], summaries[index].loc['mean', key]
+        pooled_std = sqrt(((n - 1) * s1 ** 2 + (n - 1) * s2 ** 2) / (2 * n - 2))
+        d = (m1 - m2) / pooled_std
+        
+        result[key][index] = {'value': new_value, 
+                              'difference': difference,
+                              'change_perc' : percentage_change, 
+                              'ttest': {'stat': stat, 'p': p},
+                               'cohen_d': d}
+
+def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], output_path: str) -> None:
+    logging.info("Comparing variations")
     result = {key: {} for key in SUMMARY_KEYS}
 
     for i, summary in enumerate(summaries):
         if i == 0:
             update_result_for_first_entry(result, summary, i)
         else:
-            update_result_for_subsequent_entries(result, summary, i)
+            update_result_for_subsequent_entries(result, summaries, i, dfs)
     
     write_json(f"{output_path}/comparison.json", result)
 
