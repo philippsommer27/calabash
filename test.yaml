@@ -1,10 +1,9 @@
 images:
   - "philippsommer27/ce-p4-1-0"
-  - "philippsommer27/ce-p4-1-1"
 out: "/home/philipp/dump"
 procedure:
   internal_repetitions: 500000000
-  external_repetitions: 10
+  external_repetitions: 1
   freq: 1000000
   cooldown: 10
   scaph_warmup: 1

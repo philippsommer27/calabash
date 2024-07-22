@@ -27,7 +27,6 @@ def power_plot(dfs, output_path, show=False, title='Heatmap of power consumption
     
     plt.xlabel('Time (s)')
     plt.ylabel('Power (W)')
-    plt.title(title)
 
     rocket_cmap = sns.color_palette("rocket_r", as_cmap=True)
     ax.set_facecolor(rocket_cmap(0))
@@ -89,7 +88,6 @@ def plot_temperature(df, output_path):
     
     plt.xlabel('Time (s)')
     plt.ylabel('Temperature (°C)')
-    plt.title('CPU Temperature over Time')
     
     ax.set_xlim(left=0)
     ax.set_ylim(bottom=0)
