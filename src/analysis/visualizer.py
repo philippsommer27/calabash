@@ -79,3 +79,19 @@ def distribution_plot(dfs, column_name, output_path, column_nice_name):
     set_y_limits(ax)
     ax.set_ylabel(column_nice_name)
     save_plot(output_path + '_box')
+
+def plot_temperature(df, output_path):
+    set_plot_theme()
+    
+    plt.figure(figsize=(10, 6))
+    ax = sns.lineplot(data=df, x='time', y='temperature_celcius')
+    plt.axhline(y=100, color='red')
+    
+    plt.xlabel('Time (s)')
+    plt.ylabel('Temperature (°C)')
+    plt.title('CPU Temperature over Time')
+    
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
+    
+    save_plot(output_path)

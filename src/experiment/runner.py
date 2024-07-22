@@ -12,6 +12,7 @@ from misc.config import load_configuration
 from processes_capture import ProcessesCapture
 from misc.util import get_display_name_tagged, create_directory, write_json
 from metadata import get_metadata
+from temperature import start_temp_recording, stop_temp_recording
 
 class Runner:
     def __init__(self, config_path: str) -> None:
@@ -20,6 +21,7 @@ class Runner:
         self.pc: ProcessesCapture = ProcessesCapture()
         self.curr_dir_prefix: str = ""
         self.active_containers: Set[docker.models.containers.Container] = set()
+        self.recording_thread = None
 
     def run(self) -> None:
         try:
@@ -27,7 +29,7 @@ class Runner:
             for image in self.config['images']:
                 logging.info("Pulling image %s", image)
                 images.append(self.client.images.pull(image))
-            
+        
             self.setup()
 
             if 'experiment_warmup' in self.config['procedure']:
@@ -49,6 +51,7 @@ class Runner:
             logging.error(f"Unexpected error in run method: {e}")
         finally:
             self.cleanup_all_containers()
+            stop_temp_recording(self.recording_thread, self.config['out'] + '/cpu_temps.csv')
 
     def run_variation(self, image: docker.models.images.Image) -> None:
         scaph: Optional[docker.models.containers.Container] = None
@@ -181,6 +184,7 @@ class Runner:
 
         metadata: Dict = get_metadata()
         write_json(self.config['out'] + '/metadata.json', metadata, 'x')
+        self.recording_thread = start_temp_recording()
         
     def start_scaphandre(self, directory: str) -> docker.models.containers.Container:
         self.volumes[self.config['out']] = {'bind': '/home', 'mode': 'rw'}

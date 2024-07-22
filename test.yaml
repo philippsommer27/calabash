@@ -4,11 +4,11 @@ images:
 out: "/home/philipp/dump"
 procedure:
   internal_repetitions: 500000000
-  external_repetitions: 30 
+  external_repetitions: 10
   freq: 1000000
-  cooldown: 3
+  cooldown: 10
   scaph_warmup: 1
-  experiment_warmup: 15
+  experiment_warmup: 0
 analysis:
   mode: pid
   prune_mark: "block"

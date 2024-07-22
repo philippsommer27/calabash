@@ -1,5 +1,6 @@
+import sys
 from analysis import Analysis
-from visualizer import distribution_plot, power_plot
+from visualizer import distribution_plot, power_plot, plot_temperature
 from preprocess import preprocess_scaphandre
 from process_ptrace import resolve
 from to_df import ScaphandreToDf
@@ -23,7 +24,9 @@ def run(config_path: str) -> None:
     host_power_dfs: List[List[pd.DataFrame]] = []
     summaries: List[pd.DataFrame] = []
     shapiro_results: List[Dict[str, Any]] = []
-    
+        
+    temperature(config['out'])
+
     for image in config['images']:
         display_name = get_display_name(image)
         logging.info(f"Running analysis for %s", display_name)
@@ -71,6 +74,10 @@ def run(config_path: str) -> None:
     if len(host_power_dfs) > 1:
         compare_variations(summaries, dfs, shapiro_results, config['out'])
         visualize_variations(dfs, host_power_dfs, config['out'])
+
+def temperature(out_path: str):
+    temperature_df = pd.read_csv(f"{out_path}/cpu_temps.csv")
+    plot_temperature(temperature_df, f"{out_path}/temperature")
 
 def setup_directory(out_path: str, display_name: str, iteration: int) -> str:
     curr_dir_prefix = f"/{iteration}"
@@ -187,4 +194,7 @@ def visualize_variations(dfs: List[pd.DataFrame], host_power_dfs: List[pd.DataFr
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
-    run("test.yaml")
+    if len(sys.argv) < 2:
+        print("Usage: analysis_runner.py <config_path>")
+        sys.exit(1)
+    run(sys.argv[1])
