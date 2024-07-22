@@ -1,12 +1,12 @@
 from analysis import Analysis
-from visualizer import boxplot, power_plot
+from visualizer import distribution_plot, power_plot
 from preprocess import preprocess_scaphandre
 from process_ptrace import resolve
 from to_df import ScaphandreToDf
 from misc.config import load_configuration
 from misc.util import read_json, get_display_name, read_file, create_directory, write_json
 from preflight import check
-from scipy.stats import shapiro, ttest_rel
+from scipy.stats import shapiro, ttest_rel, wilcoxon, norm
 from numpy import sqrt
 import pandas as pd
 import logging
@@ -22,6 +22,7 @@ def run(config_path: str) -> None:
     dfs: List[pd.DataFrame] = []
     host_power_dfs: List[List[pd.DataFrame]] = []
     summaries: List[pd.DataFrame] = []
+    shapiro_results: List[Dict[str, Any]] = []
     
     for image in config['images']:
         display_name = get_display_name(image)
@@ -58,18 +59,18 @@ def run(config_path: str) -> None:
 
             # Statistical Analysis
             shapiro_analysis = {}
-            stat, p = shapiro(df['host_energy_total'])
-            shapiro_analysis['host_analysis_shapiro'] = {'stat': stat, 'p': p}
-            stat, p = shapiro(df['process_energy_total'])
-            shapiro_analysis['process_analysis_shapiro'] = {'stat': stat, 'p': p}
+            for key in SUMMARY_KEYS:
+                stat, p = shapiro(df[key])
+                shapiro_analysis[f'{key}_shapiro'] = {'stat': stat, 'p': p}
 
+            shapiro_results.append(shapiro_analysis)
             write_json(f"{config['out']}/{display_name}/shapiro_analysis.json", shapiro_analysis)
 
         host_power_dfs.append(host_dfs)
 
     if len(host_power_dfs) > 1:
+        compare_variations(summaries, dfs, shapiro_results, config['out'])
         visualize_variations(dfs, host_power_dfs, config['out'])
-        compare_variations(summaries, dfs, config['out'])
 
 def setup_directory(out_path: str, display_name: str, iteration: int) -> str:
     curr_dir_prefix = f"/{iteration}"
@@ -116,7 +117,11 @@ def update_result_for_first_entry(result: Dict[str, Dict[int, Any]], summary: pd
     for key in SUMMARY_KEYS:
         result[key][index] = summary.loc['mean', key]
 
-def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]], summaries: List[pd.DataFrame], index: int, dfs: List[pd.DataFrame]) -> None:
+def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]], 
+                                         summaries: List[pd.DataFrame], 
+                                         index: int, 
+                                         dfs: List[pd.DataFrame],
+                                         shapiro_results) -> None:
     for key in SUMMARY_KEYS:
         new_value = summaries[index].loc['mean', key]
         base_value = summaries[0].loc['mean', key]
@@ -125,23 +130,40 @@ def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]], summ
         difference = new_value - base_value
         percentage_change = calculate_percentage_change(new_value, base_value)
 
-        # Paired t-test
-        stat, p = ttest_rel(dfs[0][key], dfs[index][key])
-
-        # Cohen's d
-        n = summaries[0].loc['count', key]
-        s1, s2 = summaries[0].loc['std', key], summaries[index].loc['std', key]
-        m1, m2 = summaries[0].loc['mean', key], summaries[index].loc['mean', key]
-        pooled_std = sqrt(((n - 1) * s1 ** 2 + (n - 1) * s2 ** 2) / (2 * n - 2))
-        d = (m1 - m2) / pooled_std
-        
         result[key][index] = {'value': new_value, 
-                              'difference': difference,
-                              'change_perc' : percentage_change, 
-                              'ttest': {'stat': stat, 'p': p},
-                               'cohen_d': d}
+                        'difference': difference,
+                        'change_perc' : percentage_change}
 
-def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], output_path: str) -> None:
+        is_parametric = shapiro_results[0][f'{key}_shapiro']['p'] > 0.05 and shapiro_results[index][f'{key}_shapiro']['p'] > 0.05
+
+        if is_parametric:
+            # Paired t-test
+            stat, p = ttest_rel(dfs[0][key], dfs[index][key])
+
+            result[key][index]['ttest'] = {'stat': stat, 'p': p}
+
+            # Cohen's d
+            n = summaries[0].loc['count', key]
+            s1, s2 = summaries[0].loc['std', key], summaries[index].loc['std', key]
+            m1, m2 = summaries[0].loc['mean', key], summaries[index].loc['mean', key]
+            pooled_std = sqrt(((n - 1) * s1 ** 2 + (n - 1) * s2 ** 2) / (2 * n - 2))
+            d = (m1 - m2) / pooled_std
+        
+            result[key][index]['cohen_d'] = d
+        else:
+            # Wilcoxon signed-rank test
+            stat, p = wilcoxon(dfs[0][key], dfs[index][key])
+
+            result[key][index]['wilcoxon'] = {'stat': stat, 'p': p}
+
+            # Wilcoxon r
+            N = len(dfs[0][key])  # number of observations
+            z = norm.ppf(1 - p / 2)  # converting p-value to z-score for two-sided test
+            r = z / sqrt(N)
+
+            result[key][index]['wilcoxon_r'] = r
+
+def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], shapiro_results, output_path: str) -> None:
     logging.info("Comparing variations")
     result = {key: {} for key in SUMMARY_KEYS}
 
@@ -149,19 +171,19 @@ def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], o
         if i == 0:
             update_result_for_first_entry(result, summary, i)
         else:
-            update_result_for_subsequent_entries(result, summaries, i, dfs)
+            update_result_for_subsequent_entries(result, summaries, i, dfs, shapiro_results)
     
     write_json(f"{output_path}/comparison.json", result)
 
-def visualize_variations(dfs: List[pd.DataFrame], host_power_dfs: List[List[pd.DataFrame]], output_path: str) -> None:
+def visualize_variations(dfs: List[pd.DataFrame], host_power_dfs: List[pd.DataFrame], output_path: str) -> None:
     logging.info("Creating visualizations")
-    boxplot(dfs, 'host_energy_total', f"{output_path}/host_energy_total.png")
-    boxplot(dfs, 'timestamp_running_time', f"{output_path}/timestamp_running_time.png")
-    boxplot(dfs, 'host_power_mean', f"{output_path}/host_power_mean.png")
-    boxplot(dfs, 'process_energy_total', f"{output_path}/process_energy_total.png")
-
-    for i, power_dfs in enumerate(host_power_dfs):
-        power_plot(power_dfs, f"{output_path}/host_power_{i}.png")
+    distribution_plot(dfs, 'timestamp_running_time', f"{output_path}/timestamp_running_time", 'Running Time (s)')
+    distribution_plot(dfs, 'host_energy_total', f"{output_path}/host_energy_total", 'Host Energy (J)')
+    distribution_plot(dfs, 'host_power_mean', f"{output_path}/host_power_mean", 'Host Power (W)')
+    distribution_plot(dfs, 'process_energy_total', f"{output_path}/process_energy_total", 'Process Energy (J)')
+    
+    for i, host_power_df in enumerate(host_power_dfs):
+        power_plot(host_power_df, f"{output_path}/power_plot_{i}")
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')

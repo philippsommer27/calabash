@@ -4,7 +4,6 @@ from misc.util import read_json, write_json
 import logging
 
 def prune_edges(content: List[Dict[str, Any]], timesheet: List[Dict[str, Any]], event_name: str, buffer: float) -> List[Dict[str, Any]]:
-    logging.info("Pruning edges")
     event = next((event for event in timesheet if event['name'] == event_name), None)
     if not event:
         logging.error(f"No event named '{event_name}' found in timesheet")
