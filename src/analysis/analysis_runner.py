@@ -7,7 +7,7 @@ from to_df import ScaphandreToDf
 from misc.config import load_configuration
 from misc.util import read_json, get_display_name, read_file, create_directory, write_json
 from preflight import check
-from scipy.stats import shapiro, ttest_rel, wilcoxon, norm
+from scipy.stats import shapiro, ttest_ind, mannwhitneyu
 from numpy import sqrt
 import pandas as pd
 import logging
@@ -144,9 +144,8 @@ def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]],
         is_parametric = shapiro_results[0][f'{key}_shapiro']['p'] > 0.05 and shapiro_results[index][f'{key}_shapiro']['p'] > 0.05
 
         if is_parametric:
-            # Paired t-test
-            stat, p = ttest_rel(dfs[0][key], dfs[index][key])
-
+            # Welch's t-test
+            stat, p = ttest_ind(dfs[0][key], dfs[index][key], equal_var=False)
             result[key][index]['ttest'] = {'stat': stat, 'p': p}
 
             # Cohen's d
@@ -158,17 +157,23 @@ def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]],
         
             result[key][index]['cohen_d'] = d
         else:
-            # Wilcoxon signed-rank test
-            stat, p = wilcoxon(dfs[0][key], dfs[index][key])
+            # Mann-Whitney U Test
 
-            result[key][index]['wilcoxon'] = {'stat': stat, 'p': p}
+            stat, p = mannwhitneyu(dfs[0][key], dfs[index][key])
+            result[key][index]['mannwhitneyu'] = {'stat': stat, 'p': p}
 
-            # Wilcoxon r
-            N = len(dfs[0][key])  # number of observations
-            z = norm.ppf(1 - p / 2)  # converting p-value to z-score for two-sided test
+            # r
+            n1, n2 = summaries[0].loc['count', key]
+            
+            mean_rank_diff = (n1 * n2) / 2
+            
+            std_u = sqrt((n1 * n2 * (n1 + n2 + 1)) / 12)
+            
+            z = (stat - mean_rank_diff) / std_u
+            
+            N = n1 + n2
             r = z / sqrt(N)
-
-            result[key][index]['wilcoxon_r'] = r
+            result[key][index]['r'] = r
 
 def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], shapiro_results, output_path: str) -> None:
     logging.info("Comparing variations")
