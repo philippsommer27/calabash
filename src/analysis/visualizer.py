@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
-import numpy as np
 
 def set_plot_theme():
     sns.set_theme()
+    sns.set_context("paper", font_scale=2)
     plt.rcParams['font.family'] = 'FreeSerif'
-    plt.rcParams['font.size'] = 14
 
 def concatenate_dataframes(dfs):
     for df in dfs:
@@ -22,7 +21,7 @@ def power_plot(dfs, output_path, show=False, title='Heatmap of power consumption
     
     combined_df = concatenate_dataframes(dfs)
     
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(14, 4))
     ax = sns.kdeplot(data=combined_df, x='timestamp', y='consumption', cmap="rocket_r", fill=True, bw_adjust=.5, levels=50)
     
     plt.xlabel('Time (s)')
@@ -49,7 +48,7 @@ def distribution_plot(dfs, column_name, output_path, column_nice_name):
         combined_df = pd.concat([combined_df, df_temp], axis=0)
     
     n_colors = len(dfs)
-    color_palette = sns.color_palette("deep", n_colors=n_colors)
+    color_palette = sns.color_palette("Set2", n_colors=n_colors)
     
     def set_y_limits(ax, bottom=0, top_factor=1.1):
         y_min, y_max = ax.get_ylim()
@@ -61,14 +60,15 @@ def distribution_plot(dfs, column_name, output_path, column_nice_name):
     figure_width = get_figure_width(n_colors)
     
     plt.figure(figsize=(figure_width, 6))
-    ax = sns.violinplot(data=combined_df, x='Variation', hue='Variation', y=column_name, palette=color_palette, legend=False)
+    ax = sns.violinplot(data=combined_df, x='Variation', hue='Variation', y=column_name, palette=color_palette, legend=False, split=True,
+                        density_norm='count')
     set_y_limits(ax)
     ax.set_ylabel(column_nice_name)
     save_plot(output_path + '_violin')
     
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(figure_width, 6))
     ax = sns.kdeplot(data=combined_df, x=column_name, hue='Variation', fill=True, 
-                     common_norm=True, palette=color_palette, legend=False)
+                     common_norm=True, palette=color_palette)
     set_y_limits(ax)
     ax.set_xlabel(column_nice_name)
     save_plot(output_path + '_kde')
@@ -82,7 +82,7 @@ def distribution_plot(dfs, column_name, output_path, column_nice_name):
 def plot_temperature(df, output_path):
     set_plot_theme()
     
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(14, 4))
     ax = sns.lineplot(data=df, x='time', y='temperature_celcius')
     plt.axhline(y=100, color='red')
     

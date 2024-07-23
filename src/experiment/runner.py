@@ -112,6 +112,7 @@ class Runner:
             container = self.client.containers.run(image, auto_remove=True, name=display_name, volumes=volumes, environment=env, detach=True)
             self.active_containers.add(container)
             container.wait()
+            self.active_containers.remove(container)
         except docker.errors.APIError as e:
             logging.error(f"Docker API error when running container {display_name}: {e}")
             raise

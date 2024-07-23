@@ -20,7 +20,7 @@ SUMMARY_KEYS = [
 
 def run(config_path: str) -> None:
     config = load_configuration(config_path)
-    dfs: List[pd.DataFrame] = []
+    df_variations_aggregated_runs: List[pd.DataFrame] = []
     host_power_dfs: List[List[pd.DataFrame]] = []
     summaries: List[pd.DataFrame] = []
     shapiro_results: List[Dict[str, Any]] = []
@@ -30,7 +30,7 @@ def run(config_path: str) -> None:
     for image in config['images']:
         display_name = get_display_name(image)
         logging.info(f"Running analysis for %s", display_name)
-        accumulated: Dict[int, Dict[str, Any]] = {}
+        accumulated_runs: Dict[int, Dict[str, Any]] = {}
         host_dfs: List[pd.DataFrame] = []
         
         for i in range(config['procedure']['external_repetitions']):
@@ -50,20 +50,20 @@ def run(config_path: str) -> None:
 
             analysis_results = perform_analysis(converter.dfs, config['procedure']['internal_repetitions'])
             write_json(f"{directory}/analysis.json", analysis_results)
-            accumulated[i] = analysis_results
+            accumulated_runs[i] = analysis_results
 
         if config['procedure']['external_repetitions'] > 1:
-            df = analyze_multiple_runs(accumulated)
-            df.to_csv(f"{config['out']}/{display_name}/accumulated.csv")
-            dfs.append(df)
-            summary = df.describe()
+            df_accumulated_runs = analyze_multiple_runs(accumulated_runs)
+            df_accumulated_runs.to_csv(f"{config['out']}/{display_name}/accumulated.csv")
+            df_variations_aggregated_runs.append(df_accumulated_runs)
+            summary = df_accumulated_runs.describe()
             summary.to_csv(f"{config['out']}/{display_name}/summary.csv")
             summaries.append(summary)
 
             # Statistical Analysis
             shapiro_analysis = {}
             for key in SUMMARY_KEYS:
-                stat, p = shapiro(df[key])
+                stat, p = shapiro(df_accumulated_runs[key])
                 shapiro_analysis[f'{key}_shapiro'] = {'stat': stat, 'p': p}
 
             shapiro_results.append(shapiro_analysis)
@@ -72,8 +72,8 @@ def run(config_path: str) -> None:
         host_power_dfs.append(host_dfs)
 
     if len(host_power_dfs) > 1:
-        compare_variations(summaries, dfs, shapiro_results, config['out'])
-        visualize_variations(dfs, host_power_dfs, config['out'])
+        compare_variations(summaries, df_variations_aggregated_runs, shapiro_results, config['out'])
+        visualize_variations(df_variations_aggregated_runs, host_power_dfs, config['out'])
 
 def temperature(out_path: str):
     temperature_df = pd.read_csv(f"{out_path}/cpu_temps.csv")
@@ -149,10 +149,11 @@ def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]],
             result[key][index]['ttest'] = {'stat': stat, 'p': p}
 
             # Cohen's d
-            n = summaries[0].loc['count', key]
+            n1 = summaries[0].loc['count', key]
+            n2 = summaries[index].loc['count', key]
             s1, s2 = summaries[0].loc['std', key], summaries[index].loc['std', key]
             m1, m2 = summaries[0].loc['mean', key], summaries[index].loc['mean', key]
-            pooled_std = sqrt(((n - 1) * s1 ** 2 + (n - 1) * s2 ** 2) / (2 * n - 2))
+            pooled_std = sqrt(((n1 - 1) * s1 ** 2 + (n2 - 1) * s2 ** 2) / (n1 + n2 - 2))
             d = (m1 - m2) / pooled_std
         
             result[key][index]['cohen_d'] = d
@@ -163,16 +164,15 @@ def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]],
             result[key][index]['mannwhitneyu'] = {'stat': stat, 'p': p}
 
             # r
-            n1, n2 = summaries[0].loc['count', key]
+            n1 = summaries[0].loc['count', key]
+            n2 = summaries[index].loc['count', key]
             
-            mean_rank_diff = (n1 * n2) / 2
+            # Calculate z-score
+            z = (stat - (n1 * n2 / 2)) / sqrt((n1 * n2 * (n1 + n2 + 1)) / 12)
+
+            # Calculate effect size r
+            r = abs(z) / sqrt(n1 + n2)
             
-            std_u = sqrt((n1 * n2 * (n1 + n2 + 1)) / 12)
-            
-            z = (stat - mean_rank_diff) / std_u
-            
-            N = n1 + n2
-            r = z / sqrt(N)
             result[key][index]['r'] = r
 
 def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], shapiro_results, output_path: str) -> None:
