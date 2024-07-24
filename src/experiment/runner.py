@@ -7,6 +7,7 @@ import time
 import json
 import shutil
 import logging
+import random
 from typing import Dict, List, Optional, Set
 from misc.config import load_configuration
 from processes_capture import ProcessesCapture
@@ -29,19 +30,24 @@ class Runner:
             for image in self.config['images']:
                 logging.info("Pulling image %s", image)
                 images.append(self.client.images.pull(image))
-        
+            
             self.setup()
 
             if 'experiment_warmup' in self.config['procedure']:
                 self.warmup()
 
-            for i in range(self.config['procedure']['external_repetitions']):
-                for image in images:
-                    self.curr_dir_prefix = f"/{i}"
-                    self.run_variation(image)
-                    # Cooldown period
-                    if 'cooldown' in self.config['procedure']:
-                        time.sleep(self.config['procedure']['cooldown'])
+            run_table = []
+            for image_index, repetitions in enumerate(self.config['procedure']['external_repetitions']):
+                run_table.extend([(image_index, rep) for rep in range(repetitions)])
+            
+            random.shuffle(run_table)
+
+            for image_index, repetition in run_table:
+                self.curr_dir_prefix = f"/{repetition}"
+                self.run_variation(images[image_index])
+
+                if 'cooldown' in self.config['procedure']:
+                    time.sleep(self.config['procedure']['cooldown'])
         
         except docker.errors.ImageNotFound as e:
             logging.error(f"Docker image not found: {e}")
@@ -51,7 +57,8 @@ class Runner:
             logging.error(f"Unexpected error in run method: {e}")
         finally:
             self.cleanup_all_containers()
-            stop_temp_recording(self.recording_thread, self.config['out'] + '/cpu_temps.csv')
+            if self.recording_thread:
+                stop_temp_recording(self.recording_thread, self.config['out'] + '/cpu_temps.csv')
 
     def run_variation(self, image: docker.models.images.Image) -> None:
         scaph: Optional[docker.models.containers.Container] = None
@@ -113,6 +120,7 @@ class Runner:
             self.active_containers.add(container)
             container.wait()
             self.active_containers.remove(container)
+            container = None
         except docker.errors.APIError as e:
             logging.error(f"Docker API error when running container {display_name}: {e}")
             raise

@@ -27,13 +27,13 @@ def run(config_path: str) -> None:
         
     temperature(config['out'])
 
-    for image in config['images']:
+    for k, image in enumerate(config['images']):
         display_name = get_display_name(image)
         logging.info(f"Running analysis for %s", display_name)
         accumulated_runs: Dict[int, Dict[str, Any]] = {}
         host_dfs: List[pd.DataFrame] = []
         
-        for i in range(config['procedure']['external_repetitions']):
+        for i in range(config['procedure']['external_repetitions'][k]):
             logging.info("Repetition %d", i)
             directory = setup_directory(config['out'], display_name, i)
 
@@ -52,7 +52,7 @@ def run(config_path: str) -> None:
             write_json(f"{directory}/analysis.json", analysis_results)
             accumulated_runs[i] = analysis_results
 
-        if config['procedure']['external_repetitions'] > 1:
+        if config['procedure']['external_repetitions'][k] > 1:
             df_accumulated_runs = analyze_multiple_runs(accumulated_runs)
             df_accumulated_runs.to_csv(f"{config['out']}/{display_name}/accumulated.csv")
             df_variations_aggregated_runs.append(df_accumulated_runs)
