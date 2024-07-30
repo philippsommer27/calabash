@@ -163,17 +163,9 @@ def update_result_for_subsequent_entries(result: Dict[str, Dict[int, Any]],
             stat, p = mannwhitneyu(dfs[0][key], dfs[index][key])
             result[key][index]['mannwhitneyu'] = {'stat': stat, 'p': p}
 
-            # r
-            n1 = summaries[0].loc['count', key]
-            n2 = summaries[index].loc['count', key]
+            effect_size = 1 - (2 * stat) / (n1 * n2)
             
-            # Calculate z-score
-            z = (stat - (n1 * n2 / 2)) / sqrt((n1 * n2 * (n1 + n2 + 1)) / 12)
-
-            # Calculate effect size r
-            r = abs(z) / sqrt(n1 + n2)
-            
-            result[key][index]['r'] = r
+            result[key][index]['effect_size'] = effect_size
 
 def compare_variations(summaries: List[pd.DataFrame], dfs: List[pd.DataFrame], shapiro_results, output_path: str) -> None:
     logging.info("Comparing variations")
