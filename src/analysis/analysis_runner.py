@@ -1,12 +1,12 @@
 import sys
-from analysis import Analysis
-from visualizer import distribution_plot, power_plot, plot_temperature
-from preprocess import preprocess_scaphandre
-from process_ptrace import resolve
-from to_df import ScaphandreToDf
+from .analysis import Analysis
+from .visualizer import distribution_plot, power_plot, plot_temperature
+from .preprocess import preprocess_scaphandre
+from .process_ptrace import resolve
+from .to_df import ScaphandreToDf
 from misc.config import load_configuration
 from misc.util import read_json, get_display_name, read_file, create_directory, write_json
-from preflight import check
+from .preflight import check
 from scipy.stats import shapiro, ttest_ind, mannwhitneyu
 from numpy import sqrt
 import pandas as pd
@@ -19,6 +19,8 @@ SUMMARY_KEYS = [
 ]
 
 def run(config_path: str) -> None:
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
+
     config = load_configuration(config_path)
     df_variations_aggregated_runs: List[pd.DataFrame] = []
     host_power_dfs: List[List[pd.DataFrame]] = []
@@ -190,7 +192,6 @@ def visualize_variations(dfs: List[pd.DataFrame], host_power_dfs: List[pd.DataFr
         power_plot(host_power_df, f"{output_path}/power_plot_{i}")
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(message)s')
     if len(sys.argv) < 2:
         print("Usage: analysis_runner.py <config_path>")
         sys.exit(1)

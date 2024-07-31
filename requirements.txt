@@ -9,3 +9,4 @@ seaborn >= 0.13.2
 psutil >= 6.0.0 
 py-cpuinfo >= 9.0.0 
 scipy >= 1.14.0 
+click >= 8.1.7

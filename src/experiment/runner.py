@@ -1,3 +1,10 @@
+from typing import Dict, List, Optional, Set
+from misc.config import load_configuration
+from .processes_capture import ProcessesCapture
+from misc.util import get_display_name_tagged, create_directory, write_json
+from .metadata import get_metadata
+from .temperature import start_temp_recording, stop_temp_recording
+
 import sys
 import threading
 import docker
@@ -8,12 +15,6 @@ import json
 import shutil
 import logging
 import random
-from typing import Dict, List, Optional, Set
-from misc.config import load_configuration
-from processes_capture import ProcessesCapture
-from misc.util import get_display_name_tagged, create_directory, write_json
-from metadata import get_metadata
-from temperature import start_temp_recording, stop_temp_recording
 
 class Runner:
     def __init__(self, config_path: str) -> None:
