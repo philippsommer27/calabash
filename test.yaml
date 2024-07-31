@@ -1,0 +1,13 @@
+images:
+  - "philippsommer27/ce-p5-0"
+  - "philippsommer27/ce-p5-1"
+out: "/home/philipp/dump"
+procedure:
+  internal_repetitions: 100000
+  external_repetitions: 1
+  freq: 1000000
+  cooldown: 5
+  scaph_warmup: 1
+analysis:
+  mode: pid
+  prune_mark: "block"

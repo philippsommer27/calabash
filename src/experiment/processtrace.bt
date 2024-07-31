@@ -1,0 +1,11 @@
+#!/usr/bin/bpftrace
+
+// Tracepoint for process creation (fork)
+tracepoint:sched:sched_process_fork {
+  printf("C%llu: %s (%d) -> %s (%d)\n", nsecs, comm, args->parent_pid, args->child_comm, args->child_pid);
+}
+
+// Tracepoint for process execution (execve)
+tracepoint:syscalls:sys_enter_execve {
+  printf("E%llu: %s (%d) executing %s\n", nsecs, comm, pid, str(args->argv[0]));
+}
